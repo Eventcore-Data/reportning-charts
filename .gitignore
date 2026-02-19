@@ -50,6 +50,9 @@ frontend/.env.local
 .DS_Store
 Thumbs.db
 
+# Project proposal
+PROJECT_PROPOSAL.md
+
 # Temporary files
 *.tmp
 *.bak

@@ -16,7 +16,7 @@ To create your own Excel file for testing, use this structure:
 | April    | 7200  | 3500     |
 | May      | 6800  | 3400     |
 | June     | 7500  | 3600     |
-
+ 
 ## How to Create Sample File
 
 After installing dependencies with `pip install -r requirements.txt`, run:

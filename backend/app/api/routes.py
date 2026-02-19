@@ -119,7 +119,14 @@ async def generate_chart(request: ChartRequest):
             format=request.format,
             dpi=request.dpi,
             title=request.title,
-            return_base64=True
+            return_base64=True,
+            xlabel=request.xlabel,
+            ylabel=request.ylabel,
+            colors=request.colors,
+            grid=request.grid.model_dump() if request.grid else None,
+            fonts=request.fonts.model_dump() if request.fonts else None,
+            units=request.units.model_dump() if request.units else None,
+            data_labels=request.data_labels.model_dump() if request.data_labels else None,
         )
 
         # Generate suggested filename
@@ -163,7 +170,23 @@ async def download_chart(
     theme: str = 'professional',
     format: str = 'png',
     dpi: int = 300,
-    title: Optional[str] = None
+    title: Optional[str] = None,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    colors: Optional[str] = None,
+    grid_enabled: Optional[bool] = None,
+    grid_linestyle: Optional[str] = None,
+    grid_alpha: Optional[float] = None,
+    font_family: Optional[str] = None,
+    font_title_size: Optional[int] = None,
+    font_label_size: Optional[int] = None,
+    font_tick_size: Optional[int] = None,
+    unit_x_prefix: str = '',
+    unit_x_suffix: str = '',
+    unit_y_prefix: str = '',
+    unit_y_suffix: str = '',
+    show_data_labels: bool = False,
+    data_label_format: Optional[str] = None,
 ):
     """
     Generate and download a chart directly.
@@ -175,6 +198,22 @@ async def download_chart(
         format: Output format
         dpi: Image resolution
         title: Custom title
+        xlabel: Custom x-axis label
+        ylabel: Custom y-axis label
+        colors: Comma-separated hex color codes
+        grid_enabled: Show grid lines
+        grid_linestyle: Grid line style (solid, dashed, dotted)
+        grid_alpha: Grid opacity (0.0-1.0)
+        font_family: Font family override
+        font_title_size: Title font size override
+        font_label_size: Label font size override
+        font_tick_size: Tick font size override
+        unit_x_prefix: Prefix for x-axis values
+        unit_x_suffix: Suffix for x-axis values
+        unit_y_prefix: Prefix for y-axis values
+        unit_y_suffix: Suffix for y-axis values
+        show_data_labels: Show data labels on chart elements
+        data_label_format: Python format string for data labels
 
     Returns:
         Chart file for download
@@ -193,6 +232,42 @@ async def download_chart(
             detail=f"File with ID {file_id} not found"
         )
 
+    # Build option dicts from flat query params
+    colors_list = [c.strip() for c in colors.split(',')] if colors else None
+
+    grid_dict = None
+    if grid_enabled is not None or grid_linestyle or grid_alpha is not None:
+        grid_dict = {
+            'enabled': grid_enabled if grid_enabled is not None else True,
+            'linestyle': grid_linestyle or 'solid',
+            'alpha': grid_alpha,
+        }
+
+    fonts_dict = None
+    if font_family or font_title_size or font_label_size or font_tick_size:
+        fonts_dict = {
+            'family': font_family,
+            'title_size': font_title_size,
+            'label_size': font_label_size,
+            'tick_size': font_tick_size,
+        }
+
+    units_dict = None
+    if unit_x_prefix or unit_x_suffix or unit_y_prefix or unit_y_suffix:
+        units_dict = {
+            'x_prefix': unit_x_prefix,
+            'x_suffix': unit_x_suffix,
+            'y_prefix': unit_y_prefix,
+            'y_suffix': unit_y_suffix,
+        }
+
+    data_labels_dict = None
+    if show_data_labels:
+        data_labels_dict = {
+            'show': True,
+            'format': data_label_format,
+        }
+
     # Generate chart
     try:
         chart_service = ChartService(theme=theme)
@@ -202,7 +277,14 @@ async def download_chart(
             format=format,
             dpi=dpi,
             title=title,
-            return_base64=False
+            return_base64=False,
+            xlabel=xlabel,
+            ylabel=ylabel,
+            colors=colors_list,
+            grid=grid_dict,
+            fonts=fonts_dict,
+            units=units_dict,
+            data_labels=data_labels_dict,
         )
 
         # Determine media type

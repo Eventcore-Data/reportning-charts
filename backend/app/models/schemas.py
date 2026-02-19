@@ -2,8 +2,41 @@
 Pydantic models for request/response schemas.
 """
 
-from typing import Any, List, Optional
-from pydantic import BaseModel, Field
+from typing import Any, List, Literal, Optional
+from pydantic import BaseModel, Field, field_validator
+
+
+class GridOptions(BaseModel):
+    """Options for chart grid lines."""
+    enabled: bool = Field(default=True, description="Show grid lines")
+    linestyle: Literal['solid', 'dashed', 'dotted'] = Field(
+        default='solid', description="Grid line style"
+    )
+    alpha: Optional[float] = Field(
+        default=None, description="Grid opacity (0.0-1.0). None uses theme default."
+    )
+
+
+class FontOptions(BaseModel):
+    """Options for chart fonts."""
+    family: Optional[str] = Field(default=None, description="Font family (e.g. 'serif', 'monospace'). None uses theme default.")
+    title_size: Optional[int] = Field(default=None, description="Title font size. None uses theme default.")
+    label_size: Optional[int] = Field(default=None, description="Axis label font size. None uses theme default.")
+    tick_size: Optional[int] = Field(default=None, description="Tick label font size. None uses theme default.")
+
+
+class UnitFormat(BaseModel):
+    """Formatting options for axis tick labels."""
+    x_prefix: str = Field(default='', description="Prefix for x-axis values (e.g. '$')")
+    x_suffix: str = Field(default='', description="Suffix for x-axis values (e.g. '%')")
+    y_prefix: str = Field(default='', description="Prefix for y-axis values (e.g. '$')")
+    y_suffix: str = Field(default='', description="Suffix for y-axis values (e.g. '%')")
+
+
+class DataLabelOptions(BaseModel):
+    """Options for showing data labels on chart elements."""
+    show: bool = Field(default=False, description="Show data labels on chart elements")
+    format: Optional[str] = Field(default=None, description="Python format string for labels (e.g. ',.0f' for thousands)")
 
 
 class ChartRequest(BaseModel):
@@ -14,6 +47,20 @@ class ChartRequest(BaseModel):
     format: str = Field(default='png', description="Output format: png, pdf, svg")
     title: Optional[str] = Field(None, description="Custom chart title")
     dpi: int = Field(default=300, description="Image resolution (DPI)")
+    xlabel: Optional[str] = Field(None, description="Custom x-axis label")
+    ylabel: Optional[str] = Field(None, description="Custom y-axis label")
+    colors: Optional[List[str]] = Field(None, description="Custom color list (hex codes) to override theme colors")
+    grid: Optional[GridOptions] = Field(default=None, description="Grid customization")
+    fonts: Optional[FontOptions] = Field(default=None, description="Font customization")
+    units: Optional[UnitFormat] = Field(default=None, description="Axis tick label formatting (prefix/suffix)")
+    data_labels: Optional[DataLabelOptions] = Field(default=None, description="Data label display options")
+
+    @field_validator('colors')
+    @classmethod
+    def colors_must_not_be_empty(cls, v):
+        if v is not None and len(v) == 0:
+            raise ValueError('colors list must not be empty')
+        return v
 
 
 class DataPreview(BaseModel):

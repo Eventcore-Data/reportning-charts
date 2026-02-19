@@ -15,6 +15,7 @@ matplotlib.use('Agg')  # Use non-interactive backend for API
 import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib import rcParams
+from matplotlib.ticker import FuncFormatter
 
 
 class ChartService:
@@ -54,21 +55,35 @@ class ChartService:
             "tick_size": 10
         }
 
-    def _apply_theme(self):
-        """Apply theme settings to matplotlib."""
-        rcParams['figure.facecolor'] = self.theme_config['background']
-        rcParams['axes.facecolor'] = self.theme_config['background']
-        rcParams['font.family'] = self.theme_config['font_family']
-        rcParams['axes.titlesize'] = self.theme_config['title_size']
-        rcParams['axes.labelsize'] = self.theme_config['label_size']
-        rcParams['xtick.labelsize'] = self.theme_config['tick_size']
-        rcParams['ytick.labelsize'] = self.theme_config['tick_size']
-        rcParams['axes.grid'] = True
-        rcParams['grid.alpha'] = self.theme_config['grid_alpha']
-        rcParams['grid.color'] = self.theme_config['grid_color']
+    def _apply_theme(self, font_overrides=None, grid_overrides=None):
+        """Apply theme settings to matplotlib, with optional overrides."""
+        tc = self.theme_config
+
+        rcParams['figure.facecolor'] = tc['background']
+        rcParams['axes.facecolor'] = tc['background']
+
+        # Font settings (allow overrides)
+        rcParams['font.family'] = (font_overrides.get('family') or tc['font_family']) if font_overrides else tc['font_family']
+        rcParams['axes.titlesize'] = (font_overrides.get('title_size') or tc['title_size']) if font_overrides else tc['title_size']
+        rcParams['axes.labelsize'] = (font_overrides.get('label_size') or tc['label_size']) if font_overrides else tc['label_size']
+        tick_size = (font_overrides.get('tick_size') or tc['tick_size']) if font_overrides else tc['tick_size']
+        rcParams['xtick.labelsize'] = tick_size
+        rcParams['ytick.labelsize'] = tick_size
+
+        # Grid settings (allow overrides)
+        if grid_overrides:
+            rcParams['axes.grid'] = grid_overrides.get('enabled', True)
+            rcParams['grid.alpha'] = grid_overrides.get('alpha') or tc['grid_alpha']
+            rcParams['grid.color'] = tc['grid_color']
+            linestyle_map = {'solid': '-', 'dashed': '--', 'dotted': ':'}
+            rcParams['grid.linestyle'] = linestyle_map.get(grid_overrides.get('linestyle', 'solid'), '-')
+        else:
+            rcParams['axes.grid'] = True
+            rcParams['grid.alpha'] = tc['grid_alpha']
+            rcParams['grid.color'] = tc['grid_color']
 
         # Set seaborn style
-        sns.set_palette(self.theme_config['colors'])
+        sns.set_palette(tc['colors'])
 
     @staticmethod
     def load_themes() -> Dict:
@@ -100,15 +115,32 @@ class ChartService:
 
     def create_chart(self, df: pd.DataFrame, chart_type: str = 'auto',
                      title: Optional[str] = None, xlabel: Optional[str] = None,
-                     ylabel: Optional[str] = None):
+                     ylabel: Optional[str] = None,
+                     colors: Optional[List[str]] = None,
+                     units: Optional[Dict] = None,
+                     data_labels: Optional[Dict] = None):
         """Create a chart from the dataframe."""
+        effective_colors = colors if colors else self.theme_config['colors']
+
         fig, ax = plt.subplots(figsize=(10, 6))
 
         # Auto-detect chart type if needed
         if chart_type == 'auto':
             chart_type = self._detect_chart_type(df)
 
-        # Set title and labels
+        # Create the appropriate chart type (sets auto-detected labels from column names)
+        if chart_type == 'line':
+            self._create_line_chart(df, ax, colors=effective_colors)
+        elif chart_type == 'bar':
+            self._create_bar_chart(df, ax, colors=effective_colors, data_labels=data_labels)
+        elif chart_type == 'scatter':
+            self._create_scatter_chart(df, ax, colors=effective_colors, data_labels=data_labels)
+        elif chart_type == 'pie':
+            self._create_pie_chart(df, ax, colors=effective_colors, data_labels=data_labels)
+        else:
+            self._create_line_chart(df, ax, colors=effective_colors)
+
+        # Set title and labels AFTER chart creation so user values override auto-detected ones
         if title:
             ax.set_title(title, fontweight='bold', pad=20)
         if xlabel:
@@ -116,17 +148,20 @@ class ChartService:
         if ylabel:
             ax.set_ylabel(ylabel)
 
-        # Create the appropriate chart type
-        if chart_type == 'line':
-            self._create_line_chart(df, ax)
-        elif chart_type == 'bar':
-            self._create_bar_chart(df, ax)
-        elif chart_type == 'scatter':
-            self._create_scatter_chart(df, ax)
-        elif chart_type == 'pie':
-            self._create_pie_chart(df, ax)
-        else:
-            self._create_line_chart(df, ax)
+        # Apply unit formatting to axes
+        if units:
+            x_pre = units.get('x_prefix', '')
+            x_suf = units.get('x_suffix', '')
+            if x_pre or x_suf:
+                ax.xaxis.set_major_formatter(
+                    FuncFormatter(lambda val, pos, p=x_pre, s=x_suf: f"{p}{val:g}{s}")
+                )
+            y_pre = units.get('y_prefix', '')
+            y_suf = units.get('y_suffix', '')
+            if y_pre or y_suf:
+                ax.yaxis.set_major_formatter(
+                    FuncFormatter(lambda val, pos, p=y_pre, s=y_suf: f"{p}{val:g}{s}")
+                )
 
         plt.tight_layout()
         return fig
@@ -137,54 +172,87 @@ class ChartService:
             return 'line'
         return 'bar'
 
-    def _create_line_chart(self, df: pd.DataFrame, ax):
+    def _create_line_chart(self, df: pd.DataFrame, ax, colors: Optional[List[str]] = None):
         """Create a line chart."""
+        effective_colors = colors or self.theme_config['colors']
         x_col = df.columns[0]
-        for col in df.columns[1:]:
-            ax.plot(df[x_col], df[col], marker='o', linewidth=2, markersize=6, label=col)
+        for i, col in enumerate(df.columns[1:]):
+            color = effective_colors[i % len(effective_colors)]
+            ax.plot(df[x_col], df[col], marker='o', linewidth=2, markersize=6,
+                    label=col, color=color)
 
         ax.legend(frameon=True, fancybox=True, shadow=True)
         ax.set_xlabel(x_col)
         plt.xticks(rotation=45, ha='right')
 
-    def _create_bar_chart(self, df: pd.DataFrame, ax):
+    def _create_bar_chart(self, df: pd.DataFrame, ax,
+                          colors: Optional[List[str]] = None,
+                          data_labels: Optional[Dict] = None):
         """Create a bar chart."""
+        effective_colors = colors or self.theme_config['colors']
         x_col = df.columns[0]
 
         if len(df.columns) == 2:
-            ax.bar(df[x_col], df[df.columns[1]], color=self.theme_config['colors'][0])
+            bars = ax.bar(df[x_col], df[df.columns[1]], color=effective_colors[0])
             ax.set_xlabel(x_col)
             ax.set_ylabel(df.columns[1])
+            if data_labels and data_labels.get('show'):
+                fmt = data_labels.get('format')
+                ax.bar_label(bars, fmt=f'{{:{fmt}}}' if fmt else None, padding=3)
         else:
             df_plot = df.set_index(x_col)
-            df_plot.plot(kind='bar', ax=ax, color=self.theme_config['colors'])
+            df_plot.plot(kind='bar', ax=ax, color=effective_colors)
             ax.legend(frameon=True, fancybox=True, shadow=True)
+            if data_labels and data_labels.get('show'):
+                fmt = data_labels.get('format')
+                for container in ax.containers:
+                    ax.bar_label(container, fmt=f'{{:{fmt}}}' if fmt else None, padding=3)
 
         plt.xticks(rotation=45, ha='right')
 
-    def _create_scatter_chart(self, df: pd.DataFrame, ax):
+    def _create_scatter_chart(self, df: pd.DataFrame, ax,
+                              colors: Optional[List[str]] = None,
+                              data_labels: Optional[Dict] = None):
         """Create a scatter plot."""
         if len(df.columns) < 2:
             raise ValueError("Scatter plot requires at least 2 columns")
 
+        effective_colors = colors or self.theme_config['colors']
         x_col = df.columns[0]
         y_col = df.columns[1]
 
         ax.scatter(df[x_col], df[y_col], s=100, alpha=0.6,
-                   color=self.theme_config['colors'][0], edgecolors='black', linewidth=1)
+                   color=effective_colors[0], edgecolors='black', linewidth=1)
         ax.set_xlabel(x_col)
         ax.set_ylabel(y_col)
 
-    def _create_pie_chart(self, df: pd.DataFrame, ax):
+        if data_labels and data_labels.get('show'):
+            fmt_spec = data_labels.get('format') or 'g'
+            for x_val, y_val in zip(df[x_col], df[y_col]):
+                label_text = format(y_val, fmt_spec) if isinstance(y_val, (int, float)) else str(y_val)
+                ax.annotate(label_text, (x_val, y_val),
+                           textcoords="offset points", xytext=(5, 5),
+                           fontsize=8, alpha=0.8)
+
+    def _create_pie_chart(self, df: pd.DataFrame, ax,
+                          colors: Optional[List[str]] = None,
+                          data_labels: Optional[Dict] = None):
         """Create a pie chart."""
         if len(df.columns) < 2:
             raise ValueError("Pie chart requires at least 2 columns (labels and values)")
 
+        effective_colors = colors or self.theme_config['colors']
         labels = df[df.columns[0]]
         values = df[df.columns[1]]
 
-        ax.pie(values, labels=labels, autopct='%1.1f%%', startangle=90,
-               colors=self.theme_config['colors'])
+        if data_labels and data_labels.get('show') and data_labels.get('format'):
+            fmt = data_labels['format']
+            autopct = lambda pct: f'{pct:{fmt}}%'
+        else:
+            autopct = '%1.1f%%'
+
+        ax.pie(values, labels=labels, autopct=autopct, startangle=90,
+               colors=effective_colors)
         ax.axis('equal')
 
     def save_chart_to_file(self, fig, output_path: str, format: str = 'png', dpi: int = 300):
@@ -227,19 +295,34 @@ class ChartService:
     def generate_chart(self, file_path: str, chart_type: str = 'auto',
                        format: str = 'png', dpi: int = 300,
                        title: Optional[str] = None,
-                       return_base64: bool = True) -> Tuple[Any, pd.DataFrame]:
+                       return_base64: bool = True,
+                       xlabel: Optional[str] = None,
+                       ylabel: Optional[str] = None,
+                       colors: Optional[List[str]] = None,
+                       grid: Optional[Dict] = None,
+                       fonts: Optional[Dict] = None,
+                       units: Optional[Dict] = None,
+                       data_labels: Optional[Dict] = None) -> Tuple[Any, pd.DataFrame]:
         """
         Generate a chart from an Excel file.
 
         Returns:
             Tuple of (chart_data, dataframe) where chart_data is either base64 string or bytes
         """
+        # Re-apply theme with any font/grid overrides
+        if fonts or grid:
+            self._apply_theme(font_overrides=fonts, grid_overrides=grid)
+
         df = self.read_excel(file_path)
 
         if not title:
             title = Path(file_path).stem.replace('_', ' ').title()
 
-        fig = self.create_chart(df, chart_type=chart_type, title=title)
+        fig = self.create_chart(
+            df, chart_type=chart_type, title=title,
+            xlabel=xlabel, ylabel=ylabel,
+            colors=colors, units=units, data_labels=data_labels
+        )
 
         if return_base64:
             chart_data = self.chart_to_base64(fig, format=format, dpi=dpi)

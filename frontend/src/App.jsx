@@ -22,6 +22,22 @@ function App() {
     format: 'png',
     dpi: 300,
     title: '',
+    xlabel: '',
+    ylabel: '',
+    grid_enabled: true,
+    grid_linestyle: 'solid',
+    grid_alpha: '',
+    font_family: '',
+    font_title_size: '',
+    font_label_size: '',
+    font_tick_size: '',
+    unit_x_prefix: '',
+    unit_x_suffix: '',
+    unit_y_prefix: '',
+    unit_y_suffix: '',
+    show_data_labels: false,
+    data_label_format: '',
+    colors: [],
   });
   const [chartData, setChartData] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -60,9 +76,50 @@ function App() {
     try {
       const request = {
         file_id: fileId,
-        ...chartOptions,
+        chart_type: chartOptions.chart_type,
+        theme: chartOptions.theme,
+        format: chartOptions.format,
+        dpi: chartOptions.dpi,
         title: chartOptions.title || null,
+        xlabel: chartOptions.xlabel || null,
+        ylabel: chartOptions.ylabel || null,
+        colors: chartOptions.colors.length > 0 ? chartOptions.colors : null,
       };
+
+      // Only include nested objects when non-default
+      if (!chartOptions.grid_enabled || chartOptions.grid_linestyle !== 'solid' || chartOptions.grid_alpha) {
+        request.grid = {
+          enabled: chartOptions.grid_enabled,
+          linestyle: chartOptions.grid_linestyle,
+          alpha: chartOptions.grid_alpha ? parseFloat(chartOptions.grid_alpha) : null,
+        };
+      }
+
+      if (chartOptions.font_family || chartOptions.font_title_size || chartOptions.font_label_size || chartOptions.font_tick_size) {
+        request.fonts = {
+          family: chartOptions.font_family || null,
+          title_size: chartOptions.font_title_size ? parseInt(chartOptions.font_title_size) : null,
+          label_size: chartOptions.font_label_size ? parseInt(chartOptions.font_label_size) : null,
+          tick_size: chartOptions.font_tick_size ? parseInt(chartOptions.font_tick_size) : null,
+        };
+      }
+
+      if (chartOptions.unit_x_prefix || chartOptions.unit_x_suffix || chartOptions.unit_y_prefix || chartOptions.unit_y_suffix) {
+        request.units = {
+          x_prefix: chartOptions.unit_x_prefix,
+          x_suffix: chartOptions.unit_x_suffix,
+          y_prefix: chartOptions.unit_y_prefix,
+          y_suffix: chartOptions.unit_y_suffix,
+        };
+      }
+
+      if (chartOptions.show_data_labels) {
+        request.data_labels = {
+          show: true,
+          format: chartOptions.data_label_format || null,
+        };
+      }
+
       const response = await generateChart(request);
       setChartData(response);
     } catch (error) {
@@ -225,14 +282,7 @@ function App() {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="mt-16 py-6 border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm text-gray-500">
-            Excel Chart Maker - Generate publication-ready charts without distortion
-          </p>
-        </div>
-      </footer>
+
     </div>
   );
 }

@@ -13,7 +13,7 @@ When working with data in Excel and creating charts for reports or documents:
 ## The Solution
 
 Excel Chart Maker is a Python-based tool that:
-- Reads data directly from Excel files (.xlsx, .xls)
+- Reads data directly from Esxcel files (.xlsx, .xls)
 - Generates high-quality, publication-ready charts
 - Exports charts as image files (PNG, SVG, PDF) ready to insert into reports
 - Ensures consistent formatting and scaling every time
@@ -215,5 +215,3 @@ If you encounter any issues or have questions:
 - Review the examples folder for usage patterns
 
 ---
-
-**Made with ❤️ to solve the Excel-to-Word chart problem once and for all**

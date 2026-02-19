@@ -3,11 +3,33 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Settings, Palette } from 'lucide-react';
+import { Settings, Palette, Plus, X, ChevronDown } from 'lucide-react';
 import { getThemes } from '../services/api';
+
+function CollapsibleSection({ id, title, isOpen, onToggle, children }) {
+  return (
+    <div className="border border-gray-200 rounded-lg">
+      <button
+        onClick={() => onToggle(id)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors rounded-lg"
+      >
+        <span>{title}</span>
+        <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isOpen && (
+        <div className="px-4 pb-4 pt-1">{children}</div>
+      )}
+    </div>
+  );
+}
 
 export default function ChartOptions({ options, onOptionsChange }) {
   const [themes, setThemes] = useState(null);
+  const [openSections, setOpenSections] = useState({});
+
+  const toggleSection = (key) => {
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
 
   useEffect(() => {
     loadThemes();
@@ -151,10 +173,7 @@ export default function ChartOptions({ options, onOptionsChange }) {
         )}
 
         {/* Custom Title */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Custom Title (Optional)
-          </label>
+        <CollapsibleSection id="title" title="Custom Title" isOpen={openSections.title} onToggle={toggleSection}>
           <input
             type="text"
             value={options.title || ''}
@@ -162,7 +181,222 @@ export default function ChartOptions({ options, onOptionsChange }) {
             placeholder="Leave empty for auto-generated title"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
-        </div>
+        </CollapsibleSection>
+
+        {/* Axis Labels */}
+        <CollapsibleSection id="axes" title="Axis Labels" isOpen={openSections.axes} onToggle={toggleSection}>
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              type="text"
+              value={options.xlabel || ''}
+              onChange={(e) => handleChange('xlabel', e.target.value)}
+              placeholder="X-axis label"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <input
+              type="text"
+              value={options.ylabel || ''}
+              onChange={(e) => handleChange('ylabel', e.target.value)}
+              placeholder="Y-axis label"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </CollapsibleSection>
+
+        {/* Unit Formatting */}
+        <CollapsibleSection id="units" title="Axis Unit Formatting" isOpen={openSections.units} onToggle={toggleSection}>
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              type="text"
+              value={options.unit_x_prefix}
+              onChange={(e) => handleChange('unit_x_prefix', e.target.value)}
+              placeholder="X prefix (e.g. $)"
+              className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <input
+              type="text"
+              value={options.unit_x_suffix}
+              onChange={(e) => handleChange('unit_x_suffix', e.target.value)}
+              placeholder="X suffix (e.g. %)"
+              className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <input
+              type="text"
+              value={options.unit_y_prefix}
+              onChange={(e) => handleChange('unit_y_prefix', e.target.value)}
+              placeholder="Y prefix (e.g. $)"
+              className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <input
+              type="text"
+              value={options.unit_y_suffix}
+              onChange={(e) => handleChange('unit_y_suffix', e.target.value)}
+              placeholder="Y suffix (e.g. kg)"
+              className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </CollapsibleSection>
+
+        {/* Data Labels */}
+        <CollapsibleSection id="dataLabels" title="Data Labels" isOpen={openSections.dataLabels} onToggle={toggleSection}>
+          <div className="flex items-center justify-between mb-2">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={options.show_data_labels}
+                onChange={(e) => handleChange('show_data_labels', e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-600">Show values</span>
+            </label>
+          </div>
+          {options.show_data_labels && (
+            <input
+              type="text"
+              value={options.data_label_format}
+              onChange={(e) => handleChange('data_label_format', e.target.value)}
+              placeholder="Format (e.g. ,.0f for thousands)"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          )}
+        </CollapsibleSection>
+
+        {/* Grid Controls */}
+        <CollapsibleSection id="grid" title="Grid Lines" isOpen={openSections.grid} onToggle={toggleSection}>
+          <div className="flex items-center justify-between mb-2">
+            <label className="flex items-center space-x-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={options.grid_enabled}
+                onChange={(e) => handleChange('grid_enabled', e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-600">Show grid</span>
+            </label>
+          </div>
+          {options.grid_enabled && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Style</label>
+                <select
+                  value={options.grid_linestyle}
+                  onChange={(e) => handleChange('grid_linestyle', e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="solid">Solid</option>
+                  <option value="dashed">Dashed</option>
+                  <option value="dotted">Dotted</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Opacity: {options.grid_alpha || 'Theme default'}
+                </label>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="1.0"
+                  step="0.1"
+                  value={options.grid_alpha || 0.3}
+                  onChange={(e) => handleChange('grid_alpha', e.target.value)}
+                  className="w-full"
+                />
+              </div>
+            </div>
+          )}
+        </CollapsibleSection>
+
+        {/* Font Controls */}
+        <CollapsibleSection id="fonts" title="Fonts" isOpen={openSections.fonts} onToggle={toggleSection}>
+          <select
+            value={options.font_family}
+            onChange={(e) => handleChange('font_family', e.target.value)}
+            className="w-full px-4 py-2 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Theme Default</option>
+            <option value="sans-serif">Sans-serif</option>
+            <option value="serif">Serif</option>
+            <option value="monospace">Monospace</option>
+          </select>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Title size</label>
+              <input
+                type="number"
+                value={options.font_title_size}
+                onChange={(e) => handleChange('font_title_size', e.target.value)}
+                placeholder="16"
+                min="8"
+                max="48"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Label size</label>
+              <input
+                type="number"
+                value={options.font_label_size}
+                onChange={(e) => handleChange('font_label_size', e.target.value)}
+                placeholder="12"
+                min="6"
+                max="36"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Tick size</label>
+              <input
+                type="number"
+                value={options.font_tick_size}
+                onChange={(e) => handleChange('font_tick_size', e.target.value)}
+                placeholder="10"
+                min="6"
+                max="36"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+        </CollapsibleSection>
+
+        {/* Custom Colors */}
+        <CollapsibleSection id="colors" title="Custom Colors" isOpen={openSections.colors} onToggle={toggleSection}>
+          {options.colors.length === 0 && (
+            <p className="text-xs text-gray-500 mb-2">Using theme colors. Add colors to override.</p>
+          )}
+          <div className="space-y-2">
+            {options.colors.map((color, idx) => (
+              <div key={idx} className="flex items-center space-x-2">
+                <input
+                  type="color"
+                  value={color}
+                  onChange={(e) => {
+                    const newColors = [...options.colors];
+                    newColors[idx] = e.target.value;
+                    handleChange('colors', newColors);
+                  }}
+                  className="w-10 h-10 rounded border border-gray-300 cursor-pointer"
+                />
+                <span className="text-sm text-gray-600 font-mono">{color}</span>
+                <button
+                  onClick={() => {
+                    const newColors = options.colors.filter((_, i) => i !== idx);
+                    handleChange('colors', newColors);
+                  }}
+                  className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => handleChange('colors', [...options.colors, '#2E86AB'])}
+            className="mt-2 flex items-center space-x-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Add Color</span>
+          </button>
+        </CollapsibleSection>
       </div>
     </div>
   );
