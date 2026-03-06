@@ -83,8 +83,10 @@ export default function ChartEditModal({
           </div>
 
           {/* Right panel: chart preview */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 relative overflow-hidden">
+            <div className="absolute inset-0">
             <ChartPreview
+              fillHeight={true}
               chartData={chartData}
               isLoading={isLoading}
               error={error}
@@ -94,6 +96,7 @@ export default function ChartEditModal({
               onOptionsChange={onOptionsChange}
               themes={themes}
             />
+            </div>
           </div>
         </div>
       </div>

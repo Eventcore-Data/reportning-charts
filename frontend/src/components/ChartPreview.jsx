@@ -264,6 +264,7 @@ export default function ChartPreview({
   onRelayout,
   onOptionsChange,
   themes,
+  fillHeight = false,
 }) {
   const plotRef = useRef(null);
 
@@ -436,8 +437,8 @@ export default function ChartPreview({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col${fillHeight ? ' h-full' : ''}`}>
+      <div className="shrink-0 px-6 py-4 bg-gray-50 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Eye className="h-5 w-5 text-gray-600" />
@@ -449,7 +450,7 @@ export default function ChartPreview({
         </div>
       </div>
 
-      <div className="p-4">
+      <div className={fillHeight ? 'flex-1 min-h-0 p-4' : 'p-4'}>
         <Plot
           ref={plotRef}
           data={traces}
@@ -480,12 +481,12 @@ export default function ChartPreview({
             },
             responsive: true,
           }}
-          style={{ width: '100%', minHeight: '480px' }}
+          style={fillHeight ? { width: '100%', height: '100%' } : { width: '100%', minHeight: '480px' }}
           useResizeHandler
         />
       </div>
 
-      <div className="px-6 pb-4">
+      <div className="shrink-0 px-6 pb-4">
         <p className="text-xs text-gray-400 text-center">
           Use the camera icon in the toolbar to download as PNG · Tip: drag to reposition labels and legend
         </p>
